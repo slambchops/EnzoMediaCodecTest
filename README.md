@@ -29,15 +29,15 @@ HOW TO BUILD AND RUN:
 
 1. clone repo into freescale android source
 2. setup build env for imx6 dual/quad evm
-3. go into EnzoMediaCodecTest directory and build with mm.
+3. go into imx6MediaCodecTest directory and build with mm.
    make sure imx6_codec_lib has been built beforehand and is included on
    filesystem. The JNI portion of the app uses imx6_codec_lib to encode
    a raw yuv file.
-4. copy OUT.YUV to /data/local/tmp/OUT.YUV on Enzo
+4. copy OUT.YUV to /data/local/tmp/OUT.YUV on imx6
    This is the 720p NV12 raw video file that is read and encoded and then
    passed up through to app via JNI
-5. touch (or somehow create) /data/local/tmp/TEST.YUV on Enzo
+5. touch (or somehow create) /data/local/tmp/TEST.YUV on imx6
    this is where the raw YUV data from decoder can be stored if you uncomment
    out file saving code on line 124 of DecoderView.java
-6. On Enzo, chmod 777 /dev/mxc_vpu
+6. On imx6, chmod 777 /dev/mxc_vpu
 7. Now you can push the app and run
