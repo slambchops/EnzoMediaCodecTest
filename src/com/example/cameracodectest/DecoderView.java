@@ -33,7 +33,7 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 	private ByteBuffer mEncData;
 	private ByteBuffer[] inputBuffers;
 	CodecOutputSurface outputSurface = null;
-	
+
 	private String mEncFileDir = "/data/local/tmp/OUT.264";
 	private String mYuvOutDir = "/data/local/tmp/TEST.YUV";
 
@@ -47,7 +47,7 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 		int retEncSize,inputBufferIndex = 0, checkIndex = 0;
 		String type = "video/avc";
 		MediaFormat decoderOutputFormat = null;
-		
+
 		outputSurface = new CodecOutputSurface(mInWidth, mInHeight);
 
 		// this is where we call the native code
@@ -66,7 +66,7 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 				mInWidth,
 				mInHeight);
 		format.setByteBuffer("csd-0", mEncData);
-		mDecoder.configure(format, outputSurface.getSurface(), null, 0);
+		mDecoder.configure(format, null, null, 0);
 		mDecoder.start();
 		Log.i(TAG, "Opened AVC decoder!");
 
@@ -121,7 +121,7 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 				if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
 					Log.d(TAG, "output EOS");
 				}
-				
+
 				/*if (outputFrame != null) {
 					//write to file stuff
 					FileChannel channel = null;
@@ -140,31 +140,31 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 				} else {
 					Log.e(TAG, "outputFrame is null!");
 				}*/
-					
-				
+
+
 				boolean doRender = (info.size != 0);
 				// As soon as we call releaseOutputBuffer, the buffer will be forwarded
 				// to SurfaceTexture to convert to a texture.  The API doesn't guarantee
 				// that the texture will be available before the call returns, so we
 				// need to wait for the onFrameAvailable callback to fire.
 				mDecoder.releaseOutputBuffer(decoderStatus, doRender);
-				if (doRender) {
+				/*if (doRender) {
 					Log.d(TAG, "awaiting frame " + checkIndex);
 					outputSurface.awaitNewImage();
 					outputSurface.drawImage(false);
-					//if (!checkSurfaceFrame(checkIndex++)) {
-					//    badFrames++;
-					//}
-				}
+					if (!checkSurfaceFrame(checkIndex++)) {
+					    badFrames++;
+					}
+				}*/
 			}
 		}
 		mDecoder.stop();
 		mDecoder.release();
 		mEncData = null;
 		if (outputSurface != null) {
-            outputSurface.release();
-            outputSurface = null;
-        }
+			outputSurface.release();
+			outputSurface = null;
+		}
 		closeCamEnc();
 
 		Log.d(TAG, "Exiting running loop!");
@@ -213,9 +213,9 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 	public void surfaceDestroyed(SurfaceHolder holder) {
 		mRunning = false;
 	}
-	
-    private static long computePresentationTime(int frameIndex) {
-        return 132 + frameIndex * 1000000 / 30;
-    }
+
+	private static long computePresentationTime(int frameIndex) {
+		return 132 + frameIndex * 1000000 / 30;
+	}
 
 }
