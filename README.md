@@ -1,3 +1,8 @@
+WARNING:
+
+This is super rough and dirty. I was just messing around with MediaCodec class
+to see what it could do, so the code probably has all kinds of bugs.
+
 WHAT IT DOES:
 
 Two things:
@@ -20,7 +25,7 @@ Two things:
 	
 
 
-HOW TO BUILD:
+HOW TO BUILD AND RUN:
 
 1. clone repo into freescale android source
 2. setup build env for imx6 dual/quad evm
@@ -34,3 +39,5 @@ HOW TO BUILD:
 5. touch (or somehow create) /data/local/tmp/TEST.YUV on Enzo
    this is where the raw YUV data from decoder can be stored if you uncomment
    out file saving code on line 124 of DecoderView.java
+6. On Enzo, chmod 777 /dev/mxc_vpu
+7. Now you can push the app and run
