@@ -34,7 +34,6 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 	private ByteBuffer[] inputBuffers;
 	CodecOutputSurface outputSurface = null;
 
-	private String mEncFileDir = "/data/local/tmp/OUT.264";
 	private String mYuvOutDir = "/data/local/tmp/TEST.YUV";
 
 	private boolean mRunning = true;
