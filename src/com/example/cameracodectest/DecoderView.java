@@ -65,6 +65,8 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 				mInWidth,
 				mInHeight);
 		format.setByteBuffer("csd-0", mEncData);
+		//Passing a null to argument 2 tells the decoder to send output to
+		//byte buffer. Otherwise pass a valid surface.
 		mDecoder.configure(format, null, null, 0);
 		mDecoder.start();
 		Log.i(TAG, "Opened AVC decoder!");
@@ -140,21 +142,19 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 					Log.e(TAG, "outputFrame is null!");
 				}*/
 
-
-				boolean doRender = (info.size != 0);
+				//Set doRender to false since we aren't rendering to surface
+				//boolean doRender = (info.size != 0);
+				boolean doRender = false;
 				// As soon as we call releaseOutputBuffer, the buffer will be forwarded
 				// to SurfaceTexture to convert to a texture.  The API doesn't guarantee
 				// that the texture will be available before the call returns, so we
 				// need to wait for the onFrameAvailable callback to fire.
 				mDecoder.releaseOutputBuffer(decoderStatus, doRender);
-				/*if (doRender) {
+				if (doRender) {
 					Log.d(TAG, "awaiting frame " + checkIndex);
 					outputSurface.awaitNewImage();
 					outputSurface.drawImage(false);
-					if (!checkSurfaceFrame(checkIndex++)) {
-					    badFrames++;
-					}
-				}*/
+				}
 			}
 		}
 		mDecoder.stop();
