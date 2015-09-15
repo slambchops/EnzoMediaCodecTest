@@ -21,40 +21,58 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 
-#define WIDTH			1280
-#define HEIGHT			720
-#define FPS			15
+#define FPS					15
+#define BITRATE				0 //kbps
+#define GOPSIZE				20
+#define WIDTH				1280
+#define HEIGHT				720
 
+/* These are the control structures for the encoder and camera */
+struct decoderInstance *mjpgDec;
 struct encoderInstance *avcEnc;
-struct mediaBuffer *avcData, *fileSrc;
+struct cameraInstance *usbCam;
+
+/* Control structures for the media buffers, which are used to
+   pass data between sources (like a camera or file), and pass them
+   to other components (like the VPU, a file, or a buffer) */
+struct mediaBuffer *avcData, *camData, *yuvData;
 
 static char *avcHeaderBuf;
 static int avcHeaderSize;
-
-static int readFrameCount = 0;
 
 jstring Java_com_example_cameracodectest_DecoderView_initCamEnc(JNIEnv* env, jobject javaThis)
 {
 	int ret = 0;
 
 	/* Initialize all the structures we will be using */
+	mjpgDec = (struct decoderInstance *)calloc(1, sizeof(struct decoderInstance));
 	avcEnc = (struct encoderInstance *)calloc(1, sizeof(struct encoderInstance));
+	usbCam = (struct cameraInstance  *)calloc(1, sizeof(struct cameraInstance));
 
 	avcData = (struct mediaBuffer *)calloc(1, sizeof(struct mediaBuffer));
-	fileSrc = (struct mediaBuffer *)calloc(1, sizeof(struct mediaBuffer));
+	camData = (struct mediaBuffer *)calloc(1, sizeof(struct mediaBuffer));
+	yuvData = (struct mediaBuffer *)calloc(1, sizeof(struct mediaBuffer));
+
+	/* Set properties for MJPG decoder */
+	mjpgDec->type = MJPEG;
+	strcpy(mjpgDec->decoderName,"mjpg dec #1");
 
 	/* Set properties for H264 AVC encoder */
 	avcEnc->type = H264AVC;
 	avcEnc->width = WIDTH;
 	avcEnc->height = HEIGHT;
 	avcEnc->fps = FPS;
-	avcEnc->colorSpace = NV12;
+	avcEnc->bitRate = BITRATE;
+	avcEnc->gopSize = GOPSIZE;
+	avcEnc->colorSpace = YUV422P;
+	strcpy(avcEnc->encoderName,"h264 enc #1");
 
-	/* Initialize the media buffers with proper parameters */
-	/* This is for reading avc data from a file */
-	fileSrc->dataType = RAW_VIDEO;
-	fileSrc->dataSource = FILE_SRC;
-	fileSrc->colorSpace = NV12;
+	/* Set properties for USB camera */
+	usbCam->type = MJPEG;
+	usbCam->width = WIDTH;
+	usbCam->height = HEIGHT;
+	usbCam->fps = FPS;
+	strcpy(usbCam->deviceName,"/dev/video0");
 
 	/* Init the VPU. This must be done before a codec can be used.
 	   If this fails, we need to bail. */
@@ -62,13 +80,27 @@ jstring Java_com_example_cameracodectest_DecoderView_initCamEnc(JNIEnv* env, job
 	if (ret < 0)
 		return -1;
 
-	/* Open up the files that will be used to read and store data */
-	fileSrc->fd = open("/data/local/tmp/OUT.YUV", O_RDONLY, 0);
-	LOGI("fileSrc %d\n", fileSrc->fd);
-
 	/* Use this variable to determine if all the components were
 	   initialized correctly so that transcode loop can be started */
 	ret = 0;
+
+	if (cameraInit(usbCam) < 0)
+		ret = -1;
+	/* In order to init mjpg decoder, it must be supplied with bitstream
+	   parse */
+	ret = cameraGetFrame(usbCam, camData);
+	if (ret < 0) {
+		err_msg("Could not get camera frame\n");
+		ret = -1;
+	}
+
+	if (decoderInit(mjpgDec, camData) < 0) {
+		err_msg("Could not init MJPG decoder\n");
+		ret = -1;
+	}
+
+	avcEnc->width = mjpgDec->width;
+	avcEnc->height = mjpgDec->height;
 
 	if (encoderInit(avcEnc, avcData) < 0)
 		ret = -1;
@@ -81,12 +113,27 @@ jstring Java_com_example_cameracodectest_DecoderView_initCamEnc(JNIEnv* env, job
 
 jint Java_com_example_cameracodectest_DecoderView_closeCamEnc(JNIEnv* env, jobject javaThis)
 {
+	/* Clean up all the stuff we initialized */
+	cameraDeinit(usbCam);
+	decoderDeinit(mjpgDec);
 	encoderDeinit(avcEnc);
-	close(fileSrc->fd);
-	free(avcEnc);
-	free(avcData);
-	free(fileSrc);
-	free(avcHeaderBuf);
+
+	if (usbCam)
+		free(usbCam);
+	if (mjpgDec)
+		free(mjpgDec);
+	if (avcEnc)
+		free(avcEnc);
+
+	if (avcData) {
+		free(avcData);
+	}
+	if (camData) {
+		free(camData);
+	}
+	if (yuvData) {
+		free(yuvData);
+	}
 	vpuDeinit();
 	return 0;
 }
@@ -95,17 +142,22 @@ jint Java_com_example_cameracodectest_DecoderView_getEncFrame(JNIEnv* env, jobje
 {
 	int ret;
 
-	ret = encoderEncodeFrame(avcEnc, fileSrc, avcData);
+	ret = cameraGetFrame(usbCam, camData);
 	if (ret < 0) {
-		LOGE("Frame could not be encoded\n");
+		warn_msg("Could not get camera frame\n");
 		return -1;
 	}
 
-	readFrameCount++;
-	if (readFrameCount == 30) {
-		readFrameCount = 0;
-		close(fileSrc->fd);
-		fileSrc->fd = open("/data/local/tmp/OUT.YUV", O_RDONLY, 0);
+	ret = decoderDecodeFrame(mjpgDec, camData, yuvData);
+	if (ret < 0) {
+		err_msg("Could not decode MJPG frame\n");
+		return -1;
+	}
+
+	ret = encoderEncodeFrame(avcEnc, yuvData, avcData);
+	if (ret < 0) {
+		LOGE("Frame could not be encoded\n");
+		return -1;
 	}
 
 	jbyte *BUFF = (*env)->GetDirectBufferAddress(env, buf);

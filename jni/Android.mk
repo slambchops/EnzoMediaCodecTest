@@ -5,7 +5,7 @@ include $(CLEAR_VARS)
 LOCAL_C_INCLUDES += $(LOCAL_PATH) \
 	external/linux-lib/vpu \
 	device/fsl-proprietary/include \
-	imx6_codec_lib/lib
+	imx6_vpu_codec_lib/lib
 
 LOCAL_LDLIBS := -llog
 
