@@ -31,6 +31,8 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 	private SurfaceHolder mHolder;
 	private MediaCodec mDecoder;
 	private ByteBuffer mEncData;
+	private ByteBuffer mAvcSPS;
+	private ByteBuffer mAvcPPS;
 	private ByteBuffer[] inputBuffers;
 	CodecOutputSurface outputSurface = null;
 
@@ -40,6 +42,9 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 	private int mInWidth = 1280;
 	private int mInHeight = 720;
 	private int mFrameCount = 0;
+	
+	private int ENZO_SPS_SIZE = 13;
+	private int ENZO_PPS_SIZE = 9;
 
 	@Override
 	public void run() {
@@ -57,14 +62,20 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 		MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
 		//alloc for now to grab init data needed to config decoder
 		mEncData = ByteBuffer.allocateDirect(mInWidth * mInHeight);
+		mAvcSPS = ByteBuffer.allocateDirect(ENZO_SPS_SIZE);
+		mAvcPPS = ByteBuffer.allocateDirect(ENZO_PPS_SIZE);
 		retEncSize = getEncFrame(mEncData);
 		mEncData.clear();
 		mEncData.limit(retEncSize);
 		mDecoder = MediaCodec.createDecoderByType(type);
+		Log.d(TAG, "Configuring codec format");
 		MediaFormat format = MediaFormat.createVideoFormat(type,
 				mInWidth,
 				mInHeight);
-		format.setByteBuffer("csd-0", mEncData);
+		mEncData.get(mAvcSPS.array(), 0, ENZO_SPS_SIZE);
+		mEncData.get(mAvcPPS.array(), 0, ENZO_PPS_SIZE);
+		format.setByteBuffer("csd-0", mAvcSPS);
+		format.setByteBuffer("csd-1", mAvcPPS);
 		//Passing a null to argument 2 tells the decoder to send output to
 		//byte buffer. Otherwise pass a valid surface.
 		mDecoder.configure(format, null, null, 0);
