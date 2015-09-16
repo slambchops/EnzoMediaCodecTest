@@ -42,7 +42,7 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 	private int mInWidth = 1280;
 	private int mInHeight = 720;
 	private int mFrameCount = 0;
-	
+
 	private int ENZO_SPS_SIZE = 13;
 	private int ENZO_PPS_SIZE = 9;
 
@@ -78,7 +78,7 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 		format.setByteBuffer("csd-1", mAvcPPS);
 		//Passing a null to argument 2 tells the decoder to send output to
 		//byte buffer. Otherwise pass a valid surface.
-		mDecoder.configure(format, null, null, 0);
+		mDecoder.configure(format, /*outputSurface.getSurface()*/ null, null, 0);
 		mDecoder.start();
 		Log.i(TAG, "Opened AVC decoder!");
 
@@ -136,27 +136,27 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 					}
 
 					/*if (outputFrame != null) {
-					//write to file stuff
-					FileChannel channel = null;
-					int bytesWrittenToFile = 0;
-					try {
-						channel = new FileOutputStream(mYuvOutDir, true).getChannel();
-					} catch (FileNotFoundException e) {
-						e.printStackTrace();
-					}
-					try {
-						bytesWrittenToFile = channel.write(outputFrame);
-						Log.i(TAG, "Bytes written to file: " + bytesWrittenToFile);
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-				} else {
-					Log.e(TAG, "outputFrame is null!");
-				}*/
+						//write to file stuff
+						FileChannel channel = null;
+						int bytesWrittenToFile = 0;
+						try {
+							channel = new FileOutputStream(mYuvOutDir, true).getChannel();
+						} catch (FileNotFoundException e) {
+							e.printStackTrace();
+						}
+						try {
+							bytesWrittenToFile = channel.write(outputFrame);
+							Log.i(TAG, "Bytes written to file: " + bytesWrittenToFile);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					} else {
+						Log.e(TAG, "outputFrame is null!");
+					}*/
 
 					//Set doRender to false since we aren't rendering to surface
 					//boolean doRender = (info.size != 0);
-					boolean doRender = false;
+					boolean doRender = true;
 					// As soon as we call releaseOutputBuffer, the buffer will be forwarded
 					// to SurfaceTexture to convert to a texture.  The API doesn't guarantee
 					// that the texture will be available before the call returns, so we
