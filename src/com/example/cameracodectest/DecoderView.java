@@ -12,6 +12,7 @@ import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
@@ -22,7 +23,7 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 	static {
 		System.loadLibrary("jni_cam_enc");
 	}
-
+	
 	private native String initCamEnc();
 	private native int getEncFrame(ByteBuffer byteBuf);
 	private native int closeCamEnc();
@@ -35,6 +36,7 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 	private ByteBuffer mAvcPPS;
 	private ByteBuffer[] inputBuffers;
 	CodecOutputSurface outputSurface = null;
+	private Surface mTestOutputSurface;
 
 	private String mYuvOutDir = "/data/local/tmp/TEST.YUV";
 
@@ -78,7 +80,7 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 		format.setByteBuffer("csd-1", mAvcPPS);
 		//Passing a null to argument 2 tells the decoder to send output to
 		//byte buffer. Otherwise pass a valid surface.
-		mDecoder.configure(format, /*outputSurface.getSurface()*/ null, null, 0);
+		mDecoder.configure(format, outputSurface.getSurface(), null, 0);
 		mDecoder.start();
 		Log.i(TAG, "Opened AVC decoder!");
 
@@ -155,8 +157,7 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 					}*/
 
 					//Set doRender to false since we aren't rendering to surface
-					//boolean doRender = (info.size != 0);
-					boolean doRender = true;
+					boolean doRender = (info.size != 0);
 					// As soon as we call releaseOutputBuffer, the buffer will be forwarded
 					// to SurfaceTexture to convert to a texture.  The API doesn't guarantee
 					// that the texture will be available before the call returns, so we
@@ -165,7 +166,7 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 					if (doRender) {
 						Log.d(TAG, "awaiting frame " + checkIndex);
 						outputSurface.awaitNewImage();
-						outputSurface.drawImage(false);
+						outputSurface.drawImage(true);
 					}
 				}
 
