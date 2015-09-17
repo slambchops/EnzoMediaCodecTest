@@ -23,9 +23,9 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 		System.loadLibrary("jni_cam_enc");
 	}
 
-	private native String initCamEnc();
-	private native int getEncFrame(ByteBuffer byteBuf);
-	private native int closeCamEnc();
+	public static native String initCamEnc();
+	public static native int getEncFrame(ByteBuffer byteBuf);
+	public static native int closeCamEnc();
 
 	private static final String TAG = "DecoderView";
 	private SurfaceHolder mHolder;
@@ -135,7 +135,8 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 						Log.d(TAG, "output EOS");
 					}
 
-					/*if (outputFrame != null) {
+                                        /*
+					if (outputFrame != null) {
 						//write to file stuff
 						FileChannel channel = null;
 						int bytesWrittenToFile = 0;
@@ -155,18 +156,19 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 					}*/
 
 					//Set doRender to false since we aren't rendering to surface
-					//boolean doRender = (info.size != 0);
-					boolean doRender = true;
+					boolean doRender = (info.size != 0);
+					//boolean doRender = true;
 					// As soon as we call releaseOutputBuffer, the buffer will be forwarded
 					// to SurfaceTexture to convert to a texture.  The API doesn't guarantee
 					// that the texture will be available before the call returns, so we
 					// need to wait for the onFrameAvailable callback to fire.
 					mDecoder.releaseOutputBuffer(decoderStatus, doRender);
-					if (doRender) {
-						Log.d(TAG, "awaiting frame " + checkIndex);
-						outputSurface.awaitNewImage();
-						outputSurface.drawImage(false);
-					}
+//					if (doRender) {
+//						Log.d(TAG, "awaiting frame " + checkIndex);
+//						outputSurface.awaitNewImage();
+//						outputSurface.drawImage(false);
+//					}
+                                        Log.d(TAG, "info.size " + info.size);
 				}
 
 			} else {
