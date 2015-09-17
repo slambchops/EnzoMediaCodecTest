@@ -25,6 +25,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+                <!-- Decoder/VideoDecoder -->
+        <activity
+            android:name="com.example.cameracodectest.VideoDecoderActivity"
+            android:exported="false"
+            android:label="@string/activity_video_decoder"
+            android:screenOrientation="sensorLandscape" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="com.example.cameracodectest.SAMPLE_CODE" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

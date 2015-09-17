@@ -1,29 +1,22 @@
 package com.example.cameracodectest;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
-import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 
 @SuppressLint("NewApi")
-public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, Runnable {
+public class DecoderView extends Thread {
 
 	// load the library - name matches jni/Android.mk 
 	static {
 		System.loadLibrary("jni_cam_enc");
 	}
-	
+
 	private native String initCamEnc();
 	private native int getEncFrame(ByteBuffer byteBuf);
 	private native int closeCamEnc();
@@ -38,6 +31,10 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 	CodecOutputSurface outputSurface = null;
 	private Surface mTestOutputSurface;
 
+	private int retEncSize,inputBufferIndex = 0, checkIndex = 0;
+	private String type = "video/avc";
+	private MediaFormat decoderOutputFormat = null;
+
 	private String mYuvOutDir = "/data/local/tmp/TEST.YUV";
 
 	private boolean mRunning = true;
@@ -48,20 +45,13 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 	private int ENZO_SPS_SIZE = 13;
 	private int ENZO_PPS_SIZE = 9;
 
-	@Override
-	public void run() {
-		int retEncSize,inputBufferIndex = 0, checkIndex = 0;
-		String type = "video/avc";
-		MediaFormat decoderOutputFormat = null;
-
+	public boolean init(Surface surface) {
 		outputSurface = new CodecOutputSurface(mInWidth, mInHeight);
 
 		// this is where we call the native code
 		String hello = initCamEnc();
 		Log.i(TAG, hello);
-		Log.d(TAG, "Started running loop!");
 
-		MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
 		//alloc for now to grab init data needed to config decoder
 		mEncData = ByteBuffer.allocateDirect(mInWidth * mInHeight);
 		mAvcSPS = ByteBuffer.allocateDirect(ENZO_SPS_SIZE);
@@ -80,13 +70,23 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 		format.setByteBuffer("csd-1", mAvcPPS);
 		//Passing a null to argument 2 tells the decoder to send output to
 		//byte buffer. Otherwise pass a valid surface.
-		mDecoder.configure(format, outputSurface.getSurface(), null, 0);
+		mDecoder.configure(format, mHolder.getSurface(), null, 0);
 		mDecoder.start();
 		Log.i(TAG, "Opened AVC decoder!");
+
+		return true;
+	}
+
+	@Override
+	public void run() {
+		
+		MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
 
 		ByteBuffer[] inputBuffers = mDecoder.getInputBuffers();
 		ByteBuffer[] outputBuffers = mDecoder.getOutputBuffers();
 		ByteBuffer inputBuf = null;
+		
+		Log.d(TAG, "Started running loop!");
 
 		while(mRunning) {
 			retEncSize = getEncFrame(mEncData);
@@ -99,7 +99,7 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 					inputBuf.clear();
 					inputBuf.put(mEncData);
 					mDecoder.queueInputBuffer(inputBufferIndex, 0, retEncSize, info.presentationTimeUs, info.flags);
-					Log.d(TAG, "TIMESTAMP=" + info.presentationTimeUs);
+					//Log.d(TAG, "TIMESTAMP=" + info.presentationTimeUs);
 				}
 
 				int decoderStatus = mDecoder.dequeueOutputBuffer(info, 10000);
@@ -120,8 +120,8 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 				} else if (decoderStatus < 0) {
 					Log.e(TAG, "unexpected result from deocder.dequeueOutputBuffer: " + decoderStatus);
 				} else {  // decoderStatus >= 0
-					Log.d(TAG, "surface decoder given buffer " + decoderStatus +
-							" (size=" + info.size + ")");
+					//Log.d(TAG, "surface decoder given buffer " + decoderStatus +
+					//" (size=" + info.size + ")");
 					if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
 						Log.d(TAG, "output EOS");
 					}
@@ -129,7 +129,7 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 					outputFrame.position(info.offset);
 					outputFrame.limit(info.offset + info.size);
 					if (info.size == 0) {
-						Log.d(TAG, "got empty frame");
+						//Log.d(TAG, "got empty frame");
 					} else {
 						Log.d(TAG, "decoded, checking frame " + checkIndex);
 					}
@@ -186,52 +186,9 @@ public class DecoderView extends SurfaceView implements SurfaceHolder.Callback, 
 		Log.d(TAG, "Exiting running loop!");
 
 	}
-
-	public DecoderView(Context context) {
-		super(context);
-		// Install a SurfaceHolder.Callback so we get notified when the
-		// underlying surface is created and destroyed.
-		mHolder = getHolder();
-		mHolder.addCallback(this);
-	}
-
-	public DecoderView(Context context, AttributeSet attrs, int defStyle) {
-		super(context, attrs, defStyle);
-		// Install a SurfaceHolder.Callback so we get notified when the
-		// underlying surface is created and destroyed.
-		mHolder = getHolder();
-		mHolder.addCallback(this);
-	}
-
-	public DecoderView(Context context, AttributeSet attrs) {
-		super(context, attrs);
-		// Install a SurfaceHolder.Callback so we get notified when the
-		// underlying surface is created and destroyed.
-		mHolder = getHolder();
-		mHolder.addCallback(this);
-	}
-
-	@Override
-	public void surfaceCreated(SurfaceHolder holder) {
-		mHolder = holder;
-		mRunning = true;
-		(new Thread(this)).start();
-	}
-
-	@Override
-	public void surfaceChanged(SurfaceHolder holder, int format, int width,
-			int height) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void surfaceDestroyed(SurfaceHolder holder) {
+	
+	public void close() {
 		mRunning = false;
-	}
-
-	private static long computePresentationTime(int frameIndex) {
-		return 132 + frameIndex * 1000000 / 30;
 	}
 
 }

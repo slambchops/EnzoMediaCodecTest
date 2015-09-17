@@ -7,4 +7,7 @@
     <string name="no">No</string>
     <string name="action_settings">Settings</string>
 
+    <!-- Video decoder -->
+    <string name="activity_video_decoder">Decoder/<b>Video Decoder</b></string>
+
 </resources>

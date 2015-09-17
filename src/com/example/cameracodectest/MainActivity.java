@@ -1,17 +1,25 @@
 package com.example.cameracodectest;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
 public class MainActivity extends Activity {
+	
+	private final String CATEGORYNAME = "com.example.cameracodectest.SAMPLE_CODE";
+	public final static String EXTRA_MESSAGE = "com.example.cameracodectest.MESSAGE";
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		
+		Intent intent = new Intent(this, VideoDecoderActivity.class);
+		intent.putExtra(EXTRA_MESSAGE, true);
+		startActivity(intent);
 	}
 
 	@Override
@@ -35,6 +43,6 @@ public class MainActivity extends Activity {
 	
 	/** Called when the user clicks the Send button */
 	public void sendMessage(View view) {
-	    // Do something in response to button
+
 	}
 }
