@@ -8,7 +8,7 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.example.cameracodectest.MainActivity" >
     
-    <com.example.cameracodectest.DecoderView
+    <com.example.cameracodectest.DecoderView3
         android:id="@+id/decoderView1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
