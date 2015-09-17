@@ -22,14 +22,11 @@ public class DecoderView extends Thread {
 	private native int closeCamEnc();
 
 	private static final String TAG = "DecoderView";
-	private SurfaceHolder mHolder;
 	private MediaCodec mDecoder;
 	private ByteBuffer mEncData;
 	private ByteBuffer mAvcSPS;
 	private ByteBuffer mAvcPPS;
 	private ByteBuffer[] inputBuffers;
-	CodecOutputSurface outputSurface = null;
-	private Surface mTestOutputSurface;
 
 	private int retEncSize,inputBufferIndex = 0, checkIndex = 0;
 	private String type = "video/avc";
@@ -46,7 +43,6 @@ public class DecoderView extends Thread {
 	private int ENZO_PPS_SIZE = 9;
 
 	public boolean init(Surface surface) {
-		outputSurface = new CodecOutputSurface(mInWidth, mInHeight);
 
 		// this is where we call the native code
 		String hello = initCamEnc();
@@ -70,7 +66,7 @@ public class DecoderView extends Thread {
 		format.setByteBuffer("csd-1", mAvcPPS);
 		//Passing a null to argument 2 tells the decoder to send output to
 		//byte buffer. Otherwise pass a valid surface.
-		mDecoder.configure(format, mHolder.getSurface(), null, 0);
+		mDecoder.configure(format, surface, null, 0);
 		mDecoder.start();
 		Log.i(TAG, "Opened AVC decoder!");
 
@@ -79,13 +75,17 @@ public class DecoderView extends Thread {
 
 	@Override
 	public void run() {
-		
+
 		MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
 
 		ByteBuffer[] inputBuffers = mDecoder.getInputBuffers();
 		ByteBuffer[] outputBuffers = mDecoder.getOutputBuffers();
 		ByteBuffer inputBuf = null;
-		
+
+		boolean isInput = true;
+		boolean first = false;
+		long startWhen = 0;
+
 		Log.d(TAG, "Started running loop!");
 
 		while(mRunning) {
@@ -102,72 +102,45 @@ public class DecoderView extends Thread {
 					//Log.d(TAG, "TIMESTAMP=" + info.presentationTimeUs);
 				}
 
-				int decoderStatus = mDecoder.dequeueOutputBuffer(info, 10000);
-				if (decoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
-					// no output available yet
-					Log.d(TAG, "no output from decoder available");
-				} else if (decoderStatus == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-					// The storage associated with the direct ByteBuffer may already be unmapped,
-					// so attempting to access data through the old output buffer array could
-					// lead to a native crash.
-					Log.d(TAG, "decoder output buffers changed");
-					outputBuffers = mDecoder.getOutputBuffers();
-				} else if (decoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-					// this happens before the first frame is returned
-					decoderOutputFormat = mDecoder.getOutputFormat();
-					Log.d(TAG, "decoder output format changed: " +
-							decoderOutputFormat);
-				} else if (decoderStatus < 0) {
-					Log.e(TAG, "unexpected result from deocder.dequeueOutputBuffer: " + decoderStatus);
-				} else {  // decoderStatus >= 0
-					//Log.d(TAG, "surface decoder given buffer " + decoderStatus +
-					//" (size=" + info.size + ")");
-					if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-						Log.d(TAG, "output EOS");
-					}
-					ByteBuffer outputFrame = outputBuffers[decoderStatus];
-					outputFrame.position(info.offset);
-					outputFrame.limit(info.offset + info.size);
-					if (info.size == 0) {
-						//Log.d(TAG, "got empty frame");
-					} else {
-						Log.d(TAG, "decoded, checking frame " + checkIndex);
-					}
-					if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-						Log.d(TAG, "output EOS");
-					}
+				int outIndex = mDecoder.dequeueOutputBuffer(info, 10000);
+				switch (outIndex) {
+				case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
+					Log.d(TAG, "INFO_OUTPUT_BUFFERS_CHANGED");
+					mDecoder.getOutputBuffers();
+					break;
 
-					/*if (outputFrame != null) {
-						//write to file stuff
-						FileChannel channel = null;
-						int bytesWrittenToFile = 0;
-						try {
-							channel = new FileOutputStream(mYuvOutDir, true).getChannel();
-						} catch (FileNotFoundException e) {
-							e.printStackTrace();
-						}
-						try {
-							bytesWrittenToFile = channel.write(outputFrame);
-							Log.i(TAG, "Bytes written to file: " + bytesWrittenToFile);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					} else {
-						Log.e(TAG, "outputFrame is null!");
-					}*/
+				case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
+					Log.d(TAG, "INFO_OUTPUT_FORMAT_CHANGED format : " + mDecoder.getOutputFormat());
+					break;
 
-					//Set doRender to false since we aren't rendering to surface
-					boolean doRender = (info.size != 0);
-					// As soon as we call releaseOutputBuffer, the buffer will be forwarded
-					// to SurfaceTexture to convert to a texture.  The API doesn't guarantee
-					// that the texture will be available before the call returns, so we
-					// need to wait for the onFrameAvailable callback to fire.
-					mDecoder.releaseOutputBuffer(decoderStatus, doRender);
-					if (doRender) {
-						Log.d(TAG, "awaiting frame " + checkIndex);
-						outputSurface.awaitNewImage();
-						outputSurface.drawImage(true);
+				case MediaCodec.INFO_TRY_AGAIN_LATER:
+					//					Log.d(TAG, "INFO_TRY_AGAIN_LATER");
+					break;
+
+				default:
+					if (!first) {
+						startWhen = System.currentTimeMillis();
+						first = true;
 					}
+					try {
+						long sleepTime = (info.presentationTimeUs / 1000) - (System.currentTimeMillis() - startWhen);
+						Log.d(TAG, "info.presentationTimeUs : " + (info.presentationTimeUs / 1000) + " playTime: " + (System.currentTimeMillis() - startWhen) + " sleepTime : " + sleepTime);
+
+						if (sleepTime > 0)
+							Thread.sleep(sleepTime);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} 
+
+					mDecoder.releaseOutputBuffer(outIndex, true /* Surface init */);
+					break;
+				}
+
+				// All decoded frames have been rendered, we can stop playing now
+				if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+					Log.d(TAG, "OutputBuffer BUFFER_FLAG_END_OF_STREAM");
+					break;
 				}
 
 			} else {
@@ -177,16 +150,12 @@ public class DecoderView extends Thread {
 		mDecoder.stop();
 		mDecoder.release();
 		mEncData = null;
-		if (outputSurface != null) {
-			outputSurface.release();
-			outputSurface = null;
-		}
 		closeCamEnc();
 
 		Log.d(TAG, "Exiting running loop!");
 
 	}
-	
+
 	public void close() {
 		mRunning = false;
 	}
