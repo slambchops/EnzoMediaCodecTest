@@ -3,14 +3,14 @@ package com.example.cameracodectest;
 import java.nio.ByteBuffer;
 
 import android.annotation.SuppressLint;
-import android.graphics.Paint;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
+import android.media.MediaCodecInfo.CodecCapabilities;
+import android.media.MediaCodecInfo.CodecProfileLevel;
+import android.media.MediaCodecList;
 import android.media.MediaFormat;
 import android.util.Log;
 import android.view.SurfaceHolder;
-import android.view.View;
-import java.util.Random;
 
 @SuppressLint("NewApi")
 public class Decoder implements Runnable {
@@ -21,7 +21,11 @@ public class Decoder implements Runnable {
 
     public final int[] colors = new int[this.mInHeight * this.mInWidth];
     private final int INT_ARRAY_SIZE = this.mInHeight * this.mInWidth;
-    public final byte[] frameBytes = new byte[this.mInHeight * this.mInWidth * 4];
+    public final byte[] frameBytes1 = new byte[this.mInHeight * this.mInWidth * 4];
+    //public final byte[] frameBytes2 = new byte[this.mInHeight * this.mInWidth * 4];
+    //public final byte[] frameBytes3 = new byte[this.mInHeight * this.mInWidth * 4];
+    public final byte[] frameBytes4 = new byte[this.mInHeight * this.mInWidth * 4];
+    public byte[] frameBytes = frameBytes4;
     private final int[] quad = new int[4];
     
     private final String STARTED_RUNNING_LOOP = "Started running loop!";
@@ -125,6 +129,19 @@ public class Decoder implements Runnable {
     public Decoder(Invalidator invalidator) {
         this.invalidator = invalidator;
         (new Thread(this)).start();
+        
+        Log.d(TAG, this.getCodecInfo());
+        
+        /*
+        for (int index = 0; index < INT_ARRAY_SIZE; index++) {
+            //0xFFFF0000
+            frameBytes[index] = -128;
+            frameBytes[index + 1] = -128;
+            frameBytes[index + 2] = 0;
+            frameBytes[index + 3] = 0;
+            //Log.d(TAG, new StringBuilder().append(V).append(quad[0]).append(S).append(quad[2]).append(S).append(quad[3]).append(S).append(quad[4]).toString());
+        }
+        */
     }
 
     @Override
@@ -142,9 +159,10 @@ public class Decoder implements Runnable {
             long elapsedTime;
             final String ELAPSED_TIME = "elapsedTime: ";
 
+            long totalFrames = 0;
+            currentTime = System.currentTimeMillis();
+            
             while (mRunning) {
-
-                currentTime = System.currentTimeMillis();
 
                 retEncSize = DecoderView.getEncFrame(mEncData);
                 if (retEncSize > 0) {
@@ -215,7 +233,10 @@ public class Decoder implements Runnable {
 
                         if (doRender) {
 
+                            frameBytes = frameBytes1;
                             outputFrame.get(frameBytes, info.offset, info.size);
+
+                            /*
                             for (int index = 0; index < INT_ARRAY_SIZE; index++) {
                                 //colors[index] = (int) random.nextInt(Byte.MAX_VALUE);
 
@@ -227,14 +248,15 @@ public class Decoder implements Runnable {
                                 //colors[index] = Color.RED;
                                 colors[index] = quad[0] << 12 | quad[1] << 8 | quad[2] << 4 | quad[3];
                             }
-
+                            */
+                            
                             this.invalidator.post();
                         }
 
-                        while (doRender && mRunning) {
-                            Thread.sleep(30);
+                        //while (doRender && mRunning) {
+                            //Thread.sleep(30);
                             //Log.d(TAG, AWAITING_FRAME + checkIndex);
-                        }
+                        //}
 
                     } else if (decoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
                         // no output available yet
@@ -253,13 +275,18 @@ public class Decoder implements Runnable {
                         Log.e(TAG, UNEXPECTED_RESULT + decoderStatus);
                     }
 
-                    elapsedTime = System.currentTimeMillis() - currentTime;
-                    Log.d(TAG, ELAPSED_TIME + Long.toString(elapsedTime));
-
+                    totalFrames++;
+                    
                 } else {
                     Log.e(TAG, BAD_FRAME_FROM_CAMERA);
                 }
             }
+            
+            elapsedTime = System.currentTimeMillis() - currentTime;
+            Log.d(TAG, ELAPSED_TIME + Long.toString(elapsedTime));
+            Log.d(TAG, "Total Frames: " + Long.toString(totalFrames));
+            Log.d(TAG, "Frame Rate: " + Long.toString(totalFrames / (elapsedTime / 1000)));
+
             mDecoder.stop();
             mDecoder.release();
             mEncData = null;
@@ -292,7 +319,8 @@ public class Decoder implements Runnable {
         mEncData.clear();
         mEncData.limit(retEncSize);
         mDecoder = MediaCodec.createDecoderByType(type);
-            //int colorFormat = random.nextInt(colorFormats.length);
+        
+        //int colorFormat = random.nextInt(colorFormats.length);
         //Log.d(TAG, "Configuring codec format: " + colorFormatStrings[colorFormat]);
         Log.d(TAG, "Configuring codec format");
         MediaFormat format = MediaFormat.createVideoFormat(type,
@@ -312,4 +340,84 @@ public class Decoder implements Runnable {
         Log.i(TAG, OPEN_AVE_DECODER);
     }
 
+    /*
+    private static MediaCodecInfo selectCodec(String mimeType) {
+
+        int numCodecs = MediaCodecList.getCodecCount();
+        for (int i = 0; i < numCodecs; i++) {
+            MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
+
+            if (!codecInfo.isEncoder()) {
+                continue;
+            }
+
+            String[] types = codecInfo.getSupportedTypes();
+            for (int j = 0; j < types.length; j++) {
+                if (types[j].equalsIgnoreCase(mimeType)) {
+                    return codecInfo;
+                }
+            }
+        }
+        return null;
+    }
+    */
+
+    private String getCodecInfo() {
+
+        final String CODEC_INFO = "CodecInfo: ";
+        final String NAME = "Name: ";
+        final String IS_ENCODER = " isEncoder: ";
+        final String COMMA_SPACE = ", ";
+        final String TYPES = " Types: ";
+        final String COLOR_FORMATS = " Color Formats: ";
+        final String DASH = "-";
+        
+        final StringBuilder stringBuilder = new StringBuilder();
+        
+        stringBuilder.append(CODEC_INFO);
+        
+        int numCodecs = MediaCodecList.getCodecCount();
+        String[] types = null;
+        CodecCapabilities codecCapabilities = null;
+        CodecProfileLevel[] codecProfileLevelArray;
+        String type;
+        int[] colorFormats;
+
+        for (int i = 0; i < numCodecs; i++) {
+            MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
+
+            stringBuilder.append(NAME);
+            stringBuilder.append(codecInfo.getName());
+
+            stringBuilder.append(IS_ENCODER);
+            stringBuilder.append(codecInfo.isEncoder());
+
+            stringBuilder.append(TYPES);
+            types = codecInfo.getSupportedTypes();
+            for (int j = 0; j < types.length; j++) {
+                type = types[j];
+                stringBuilder.append(type);
+
+                codecCapabilities = codecInfo.getCapabilitiesForType(type);
+                colorFormats = codecCapabilities.colorFormats;
+                stringBuilder.append(COLOR_FORMATS);
+                for(int index = 0; index < colorFormats.length; index++)
+                {
+                    stringBuilder.append(colorFormats[index]);
+                    stringBuilder.append(COMMA_SPACE);
+                }
+                codecProfileLevelArray = codecCapabilities.profileLevels;
+                for(int index = 0; index < codecProfileLevelArray.length; index++)
+                {
+                    stringBuilder.append(codecProfileLevelArray[index].level);
+                    stringBuilder.append(DASH);
+                    stringBuilder.append(codecProfileLevelArray[index].profile);
+                    stringBuilder.append(COMMA_SPACE);
+                }
+                
+                stringBuilder.append(COMMA_SPACE);
+            }
+        }
+        return stringBuilder.toString();
+    }
 }
