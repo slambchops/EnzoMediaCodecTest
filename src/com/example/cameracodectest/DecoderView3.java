@@ -27,6 +27,8 @@ public class DecoderView3 extends View {
     public DecoderView3(Context context) {
         super(context);
         this.decoder = new Decoder(new ViewInvalidator(this));
+        this.decoder.init(null);
+        this.decoder.start();
         bitmap = Bitmap.createBitmap(this.decoder.mInWidth, this.decoder.mInHeight, Config.ARGB_8888);
         //params = new Object[]{null, 0, this.decoder.mInWidth, 0, 0, this.decoder.mInWidth, this.decoder.mInHeight, false, paint};
         //this.updateMethod();
@@ -35,6 +37,8 @@ public class DecoderView3 extends View {
     public DecoderView3(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
         this.decoder = new Decoder(new ViewInvalidator(this));
+        this.decoder.init(null);
+        this.decoder.start();
         bitmap = Bitmap.createBitmap(this.decoder.mInWidth, this.decoder.mInHeight, Config.ARGB_8888);
         //params = new Object[]{null, 0, this.decoder.mInWidth, 0, 0, this.decoder.mInWidth, this.decoder.mInHeight, false, paint};
         //this.updateMethod();
@@ -43,6 +47,8 @@ public class DecoderView3 extends View {
     public DecoderView3(Context context, AttributeSet attrs) {
         super(context, attrs);
         this.decoder = new Decoder(new ViewInvalidator(this));
+        this.decoder.init(null);
+        this.decoder.start();
         bitmap = Bitmap.createBitmap(this.decoder.mInWidth, this.decoder.mInHeight, Config.ARGB_8888);
         //params = new Object[]{null, 0, this.decoder.mInWidth, 0, 0, this.decoder.mInWidth, this.decoder.mInHeight, false, paint};
         //this.updateMethod();
@@ -95,7 +101,7 @@ public class DecoderView3 extends View {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         Log.d(TAG, "onDetachedFromWindow");
-        this.decoder.mRunning = false;
+        this.decoder.close();
     }
     
     
