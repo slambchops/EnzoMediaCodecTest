@@ -24,8 +24,8 @@
 #define FPS					15
 #define BITRATE				0 //kbps
 #define GOPSIZE				20
-#define WIDTH				1280
-#define HEIGHT				720
+#define WIDTH				320
+#define HEIGHT				240
 
 /* These are the control structures for the encoder and camera */
 struct decoderInstance *mjpgDec;

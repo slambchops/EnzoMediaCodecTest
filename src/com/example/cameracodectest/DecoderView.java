@@ -50,25 +50,25 @@ public class DecoderView extends Thread {
 
 		//alloc for now to grab init data needed to config decoder
 		mEncData = ByteBuffer.allocateDirect(mInWidth * mInHeight);
-		mAvcSPS = ByteBuffer.allocateDirect(ENZO_SPS_SIZE);
+		mAvcSPS = ByteBuffer.allocateDirect(ENZO_SPS_SIZE + ENZO_PPS_SIZE);
 		mAvcPPS = ByteBuffer.allocateDirect(ENZO_PPS_SIZE);
-		retEncSize = getEncFrame(mEncData);
-		mEncData.clear();
-		mEncData.limit(retEncSize);
+		//retEncSize = getEncFrame(mEncData);
+		//mEncData.clear();
+		//mEncData.limit(retEncSize);
 		mDecoder = MediaCodec.createDecoderByType(type);
-		Log.d(TAG, "Configuring codec format");
+		Log.d(TAG, "Configuring codec format TEST AHHHH!!");
 		MediaFormat format = MediaFormat.createVideoFormat(type,
 				mInWidth,
 				mInHeight);
-		mEncData.get(mAvcSPS.array(), 0, ENZO_SPS_SIZE);
-		mEncData.get(mAvcPPS.array(), 0, ENZO_PPS_SIZE);
-		format.setByteBuffer("csd-0", mAvcSPS);
-		format.setByteBuffer("csd-1", mAvcPPS);
+		//mEncData.get(mAvcSPS.array(), 0, ENZO_SPS_SIZE + ENZO_PPS_SIZE);
+		//mEncData.get(mAvcPPS.array(), 0, ENZO_PPS_SIZE);
+		//format.setByteBuffer("csd-0", mAvcSPS);
+		//format.setByteBuffer("csd-1", mAvcPPS);
 		//Passing a null to argument 2 tells the decoder to send output to
 		//byte buffer. Otherwise pass a valid surface.
 		mDecoder.configure(format, surface, null, 0);
 		mDecoder.start();
-		Log.i(TAG, "Opened AVC decoder!");
+		Log.i(TAG, "Opened AVC decoder TEST!");
 
 		return true;
 	}
